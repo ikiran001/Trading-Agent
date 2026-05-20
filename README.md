@@ -33,7 +33,7 @@ docker compose up --build
 ```
 
 - API: http://localhost:8000
-- Dashboard: http://localhost:3000
+- Dashboard: http://localhost:3001 (port 3001 avoids conflict with other apps on 3000)
 - Health: http://localhost:8000/health
 
 ### 4. Local backend dev
