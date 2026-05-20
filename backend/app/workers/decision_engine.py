@@ -7,6 +7,7 @@ from app.infrastructure.redis_bus import RedisBus
 from app.repositories.signal_repository import SignalRepository
 from app.services.decision_engine import DecisionEngine
 from app.services.mtf_analyzer import MTFAnalysis
+from app.services.nifty50_options import suggest_instrument
 from app.services.risk_manager import RiskManager
 from app.workers._runner import run_worker
 
@@ -37,9 +38,7 @@ async def main_loop(settings):
 
     async def on_sentiment(channel: str, data: dict):
         _state["__global__"]["sentiment"] = data
-        for symbol in list(_state.keys()):
-            if symbol != "__global__":
-                await _maybe_emit(settings, bus, risk, session_factory, symbol)
+        await _maybe_emit(settings, bus, risk, session_factory, settings.primary_symbol)
 
     async def on_sector(channel: str, data: dict):
         _state["__global__"]["sector"] = data
@@ -64,6 +63,8 @@ async def _maybe_emit(settings, bus, risk, session_factory, symbol: str):
 
     if symbol == "__global__":
         return
+    if symbol != settings.primary_symbol:
+        return
     now = time.time()
     if now - _DEBOUNCE.get(symbol, 0) < 0.2:
         return
@@ -78,9 +79,12 @@ async def _maybe_emit(settings, bus, risk, session_factory, symbol: str):
     mtf_data = tech.get("mtf")
     mtf = MTFAnalysis(**mtf_data) if mtf_data else None
 
+    indicators = tech.get("indicators") or {}
+    spot = float(indicators.get("price") or 0)
+
     signal = _engine.fuse(
         symbol=symbol,
-        indicators=tech.get("indicators"),
+        indicators=indicators,
         mtf=mtf,
         options_score=opts.get("score", 50),
         sector_score=global_sec.get("top_score", 50),
@@ -89,6 +93,8 @@ async def _maybe_emit(settings, bus, risk, session_factory, symbol: str):
         candles_1m=None,
         data_stale=opts.get("data_stale", False),
     )
+    if signal and symbol == "NIFTY" and opts.get("chain"):
+        signal.instrument = suggest_instrument(opts, spot, signal.signal)
     if not signal or signal.signal == SignalAction.HOLD:
         return
 

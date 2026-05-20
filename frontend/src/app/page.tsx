@@ -31,8 +31,8 @@ export default function Dashboard() {
     <main className="min-h-screen p-4 md:p-6">
       <header className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold">AI Trading Desk</h1>
-          <p className="text-gray-500 text-sm">NIFTY · BANKNIFTY · FINNIFTY — real-time</p>
+          <h1 className="text-2xl font-bold">NIFTY 50 Trading Desk</h1>
+          <p className="text-gray-500 text-sm">NSE:NIFTY index & options — live intraday signals</p>
         </div>
         <span className={`text-xs px-2 py-1 rounded ${connected ? "bg-accent/20 text-accent" : "bg-danger/20 text-danger"}`}>
           {connected ? "Live" : "Reconnecting…"}

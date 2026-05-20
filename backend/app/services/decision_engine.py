@@ -26,6 +26,7 @@ class DecisionEngine:
         tv_confirm: bool = False,
         candles_1m: list[dict] | None = None,
         data_stale: bool = False,
+        instrument: str | None = None,
     ) -> SignalCreate | None:
         if data_stale:
             return None
@@ -109,6 +110,7 @@ class DecisionEngine:
             signal=action,
             category=category,
             symbol=symbol,
+            instrument=instrument,
             entry=entry,
             stop_loss=sl,
             target_1=t1,

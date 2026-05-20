@@ -29,7 +29,8 @@ class Settings(BaseSettings):
     min_rr_ratio: float = 1.5
     enable_live_trading: bool = False
 
-    watchlist_symbols: str = "NIFTY,BANKNIFTY,FINNIFTY"
+    watchlist_symbols: str = "NIFTY"
+    primary_symbol: str = "NIFTY"  # NIFTY 50 index (NSE)
     news_rss_urls: str = ""
 
     @property
