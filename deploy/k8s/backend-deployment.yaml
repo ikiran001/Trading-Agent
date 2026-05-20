@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: trading-agent-backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: trading-agent-backend
+  template:
+    metadata:
+      labels:
+        app: trading-agent-backend
+    spec:
+      containers:
+        - name: backend
+          image: trading-agent-backend:latest
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - secretRef:
+                name: trading-agent-secrets
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: trading-agent-backend
+spec:
+  selector:
+    app: trading-agent-backend
+  ports:
+    - port: 80
+      targetPort: 8000

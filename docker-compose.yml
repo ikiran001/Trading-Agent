@@ -1,0 +1,115 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: trading
+      POSTGRES_PASSWORD: trading
+      POSTGRES_DB: trading_agent
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trading -d trading_agent"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  backend:
+    build: ./backend
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://trading:trading@postgres:5432/trading_agent
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    ports: ["8000:8000"]
+    volumes: ["./backend:/app"]
+
+  worker-market:
+    build: ./backend
+    command: python -m app.workers.market_stream
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://trading:trading@postgres:5432/trading_agent
+      REDIS_URL: redis://redis:6379/0
+    depends_on: [postgres, redis]
+    volumes: ["./backend:/app"]
+
+  worker-candles:
+    build: ./backend
+    command: python -m app.workers.candle_aggregator
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://trading:trading@postgres:5432/trading_agent
+      REDIS_URL: redis://redis:6379/0
+    depends_on: [postgres, redis]
+    volumes: ["./backend:/app"]
+
+  worker-analysis:
+    build: ./backend
+    command: python -m app.workers.technical_analysis
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://trading:trading@postgres:5432/trading_agent
+      REDIS_URL: redis://redis:6379/0
+    depends_on: [postgres, redis]
+    volumes: ["./backend:/app"]
+
+  worker-decision:
+    build: ./backend
+    command: python -m app.workers.decision_engine
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://trading:trading@postgres:5432/trading_agent
+      REDIS_URL: redis://redis:6379/0
+    depends_on: [postgres, redis]
+    volumes: ["./backend:/app"]
+
+  worker-options:
+    build: ./backend
+    command: python -m app.workers.option_chain_poller
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://trading:trading@postgres:5432/trading_agent
+      REDIS_URL: redis://redis:6379/0
+    depends_on: [postgres, redis]
+    volumes: ["./backend:/app"]
+
+  worker-news:
+    build: ./backend
+    command: python -m app.workers.news_poller
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://trading:trading@postgres:5432/trading_agent
+      REDIS_URL: redis://redis:6379/0
+    depends_on: [postgres, redis]
+    volumes: ["./backend:/app"]
+
+  worker-alerts:
+    build: ./backend
+    command: python -m app.workers.alert_dispatcher
+    env_file: .env
+    environment:
+      REDIS_URL: redis://redis:6379/0
+    depends_on: [redis]
+    volumes: ["./backend:/app"]
+
+  frontend:
+    build: ./frontend
+    ports: ["3000:3000"]
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      NEXT_PUBLIC_WS_URL: ws://localhost:8000/ws/v1/stream
+    depends_on: [backend]
+
+volumes:
+  pgdata:
